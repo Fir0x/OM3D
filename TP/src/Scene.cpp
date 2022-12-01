@@ -21,13 +21,11 @@ void Scene::add_object(PointLight obj) {
 
 static bool isInBound(const glm::vec3& object_dir, const glm::vec3& normal, float radius) {
     float distance = glm::dot(object_dir, normal);
-    std::cout << distance << " " << radius << std::endl;
     return distance > -radius;
 }
 
 static bool cullObject(const BoundingSphere& bounding_sphere, const glm::vec3& camera_position, const Frustum& frustum) {
     glm::vec3 object_dir = bounding_sphere.center - camera_position;
-    //object_dir = glm::normalize(object_dir);
 
     {
         if (!isInBound(object_dir, frustum._top_normal, bounding_sphere.radius))
@@ -90,7 +88,9 @@ void Scene::render(const Camera& camera) const {
     Frustum frustum = camera.build_frustum();
     // Render every object
     for(const SceneObject& obj : _objects) {
-        if (cullObject(obj.boundingSphere(), camera_position, frustum))
+        BoundingSphere transformedBoundingSphere = obj.boundingSphere();
+        transformedBoundingSphere.center = glm::vec4(transformedBoundingSphere.center, 1.0f) * obj.transform();
+        if (cullObject(transformedBoundingSphere, camera_position, frustum))
             continue;
 
         obj.render();
