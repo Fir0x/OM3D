@@ -88,6 +88,9 @@ void init_graphics() {
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
         // We use reverse-Z so far is 0
         glClearDepthf(0.0f);
+
+        glCullFace(GL_BACK);
+        glFrontFace(GL_CCW);
     }
 
     glGenVertexArrays(1, &global_vao);

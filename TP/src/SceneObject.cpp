@@ -27,4 +27,8 @@ const glm::mat4& SceneObject::transform() const {
     return _transform;
 }
 
+BoundingSphere SceneObject::boundingSphere() const {
+    return _mesh->boundingSphere();
+}
+
 }

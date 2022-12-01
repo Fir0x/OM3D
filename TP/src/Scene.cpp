@@ -4,6 +4,8 @@
 
 #include <shader_structs.h>
 
+#include <iostream>
+
 namespace OM3D {
 
 Scene::Scene() {
@@ -15,6 +17,44 @@ void Scene::add_object(SceneObject obj) {
 
 void Scene::add_object(PointLight obj) {
     _point_lights.emplace_back(std::move(obj));
+}
+
+static bool isInBound(const glm::vec3& object_dir, const glm::vec3& normal, float radius) {
+    float distance = glm::dot(object_dir, normal);
+    std::cout << distance << " " << radius << std::endl;
+    return distance > -radius;
+}
+
+static bool cullObject(const BoundingSphere& bounding_sphere, const glm::vec3& camera_position, const Frustum& frustum) {
+    glm::vec3 object_dir = bounding_sphere.center - camera_position;
+    //object_dir = glm::normalize(object_dir);
+
+    {
+        if (!isInBound(object_dir, frustum._top_normal, bounding_sphere.radius))
+            return true;
+    }
+
+    {
+        if (!isInBound(object_dir, frustum._bottom_normal, bounding_sphere.radius))
+            return true;
+    }
+
+    {
+        if (!isInBound(object_dir, frustum._right_normal, bounding_sphere.radius))
+            return true;
+    }
+
+    {
+        if (!isInBound(object_dir, frustum._left_normal, bounding_sphere.radius))
+            return true;
+    }
+
+    {
+        if (!isInBound(object_dir, frustum._near_normal, bounding_sphere.radius))
+            return true;
+    }
+
+    return false;
 }
 
 void Scene::render(const Camera& camera) const {
@@ -46,7 +86,13 @@ void Scene::render(const Camera& camera) const {
     light_buffer.bind(BufferUsage::Storage, 1);
 
     // Render every object
+    glm::vec3 camera_position = camera.position();
+    Frustum frustum = camera.build_frustum();
+    // Render every object
     for(const SceneObject& obj : _objects) {
+        if (cullObject(obj.boundingSphere(), camera_position, frustum))
+            continue;
+
         obj.render();
     }
 }
