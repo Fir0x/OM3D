@@ -87,7 +87,7 @@ std::unique_ptr<Scene> create_default_scene() {
     auto scene = std::make_unique<Scene>();
 
     // Load default cube model
-    auto result = Scene::from_gltf(std::string(data_path) + "forest.glb");
+    auto result = Scene::from_gltf(std::string(data_path) + "cube.glb");
     ALWAYS_ASSERT(result.is_ok, "Unable to load default scene");
     scene = std::move(result.value);
 
@@ -142,6 +142,17 @@ int main(int, char**) {
     Framebuffer main_framebuffer(&depth, std::array{&lit});
     Framebuffer tonemap_framebuffer(nullptr, std::array{&color});
 
+    auto deferred_color = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_sRGB);
+    auto deferred_normal = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
+    Framebuffer g_buffer(&depth, std::array{deferred_color.get(), deferred_normal.get()});
+
+    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), &depth };
+
+    Material deferred_pass = Material::deferred_material();
+    deferred_pass.set_texture(0u, deferred_color);
+    deferred_pass.set_texture(1u, deferred_normal);
+
+    int debug_mode = 0;
     for(;;) {
         glfwPollEvents();
         if(glfwWindowShouldClose(window) || glfwGetKey(window, GLFW_KEY_ESCAPE)) {
@@ -154,19 +165,25 @@ int main(int, char**) {
             process_inputs(window, scene_view.camera());
         }
 
-        // Render the scene
+        // Render G buffer
         {
-            main_framebuffer.bind();
+            g_buffer.bind();
             scene_view.render();
+        }
+
+        {
+            deferred_pass.bind();
+            glDrawArrays(GL_TRIANGLES, 0, 3);
         }
 
         // Apply a tonemap in compute shader
         {
             tonemap_program->bind();
-            lit.bind(0);
+            debug_refs[debug_mode]->bind(0);
             color.bind_as_image(1, AccessType::WriteOnly);
             glDispatchCompute(align_up_to(window_size.x, 8), align_up_to(window_size.y, 8), 1);
         }
+
         // Blit tonemap result to screen
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         tonemap_framebuffer.blit();
@@ -183,6 +200,19 @@ int main(int, char**) {
                     scene = std::move(result.value);
                     scene_view = SceneView(scene.get());
                 }
+            }
+
+            if (ImGui::BeginTable("Debug_table", 1))
+            {
+                static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth" };
+                for (size_t i = 0; i < radio_names.size(); i++)
+                {
+                    ImGui::TableNextColumn();
+                    ImGui::PushID(i);
+                    ImGui::RadioButton(radio_names[i].c_str(), &debug_mode, i);
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
             }
         }
         imgui.finish();

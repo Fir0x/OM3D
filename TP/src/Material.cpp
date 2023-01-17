@@ -85,13 +85,19 @@ std::shared_ptr<Material> Material::empty_material() {
 
 Material Material::textured_material() {
     Material material;
-    material._program = Program::from_files("lit.frag", "basic.vert", {"TEXTURED"});
+    material._program = Program::from_files("deferred_prepass.frag", "basic.vert", {"TEXTURED"});
     return material;
 }
 
 Material Material::textured_normal_mapped_material() {
     Material material;
-    material._program = Program::from_files("lit.frag", "basic.vert", std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
+    material._program = Program::from_files("deferred_prepass.frag", "basic.vert", std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
+    return material;
+}
+
+Material Material::deferred_material() {
+    Material material;
+    material._program = Program::from_files("deferred_lit.frag", "screen.vert", std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
     return material;
 }
 
