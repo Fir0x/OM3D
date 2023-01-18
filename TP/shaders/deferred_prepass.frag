@@ -10,7 +10,7 @@ layout(location = 2) in vec3 in_color;
 layout(binding = 0) uniform sampler2D in_texture;
 
 vec3 remapNormal(vec3 normal) {
-    return 0.0 + (normal + 1.0) * (1.0 - 0.0) / (1.0 + 1.0);
+    return normal / 2.0 + vec3(0.5);
 }
 
 void main() {

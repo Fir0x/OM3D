@@ -19,4 +19,11 @@ void SceneView::render() const {
     }
 }
 
+void SceneView::render_deferred(const Framebuffer& g_buffer, const Framebuffer& main_buffer,
+                                const Material& deferred_lit) const {
+    if (_scene) {
+        _scene->render_deferred(_camera, g_buffer, main_buffer, deferred_lit);
+    }
+}
+
 }

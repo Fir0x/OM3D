@@ -148,9 +148,9 @@ int main(int, char**) {
 
     Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), &depth };
 
-    Material deferred_pass = Material::deferred_material();
-    deferred_pass.set_texture(0u, deferred_color);
-    deferred_pass.set_texture(1u, deferred_normal);
+    Material deferred_lit = Material::deferred_material();
+    deferred_lit.set_texture(0u, deferred_color);
+    deferred_lit.set_texture(1u, deferred_normal);
 
     int debug_mode = 0;
     for(;;) {
@@ -165,15 +165,8 @@ int main(int, char**) {
             process_inputs(window, scene_view.camera());
         }
 
-        // Render G buffer
         {
-            g_buffer.bind();
-            scene_view.render();
-        }
-
-        {
-            deferred_pass.bind();
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+            scene_view.render_deferred(g_buffer, main_framebuffer, deferred_lit);
         }
 
         // Apply a tonemap in compute shader

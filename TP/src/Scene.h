@@ -4,6 +4,7 @@
 #include <SceneObject.h>
 #include <PointLight.h>
 #include <Camera.h>
+#include <Framebuffer.h>
 
 #include <vector>
 #include <memory>
@@ -18,6 +19,8 @@ class Scene : NonMovable {
         static Result<std::unique_ptr<Scene>> from_gltf(const std::string& file_name);
 
         void render(const Camera& camera) const;
+        void render_deferred(const Camera& camera, const Framebuffer& g_buffer,
+                             const Framebuffer& main_buffer, const Material& deferred_lit) const;
 
         void add_object(SceneObject obj);
         void add_object(PointLight obj);
