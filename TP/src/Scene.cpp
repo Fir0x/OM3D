@@ -100,7 +100,7 @@ void Scene::render(const Camera& camera) const {
 }
 
 void Scene::deferred_lighting(const Camera& camera, const Material& sun_material,
-                              const Material& point_light_material) const {
+                              Material& point_light_material) const {
     // Fill and bind frame data buffer
     TypedBuffer<shader::FrameData> buffer(nullptr, 1);
     {
@@ -110,10 +110,32 @@ void Scene::deferred_lighting(const Camera& camera, const Material& sun_material
         mapping[0].sun_color = glm::vec3(1.0f, 1.0f, 1.0f);
         mapping[0].sun_dir = glm::normalize(_sun_direction);
     }
-    
     buffer.bind(BufferUsage::Uniform, 0);
+
+    // Fill and bind lights buffer
+    TypedBuffer<shader::PointLight> light_buffer(nullptr, std::max(_point_lights.size(), size_t(1)));
+    {
+        auto mapping = light_buffer.map(AccessType::WriteOnly);
+        for(size_t i = 0; i != _point_lights.size(); ++i) {
+            const auto& light = _point_lights[i];
+            mapping[i] = {
+                light.position(),
+                light.radius(),
+                light.color(),
+                0.0f
+            };
+        }
+    }
+    light_buffer.bind(BufferUsage::Storage, 1);
+
     sun_material.bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    point_light_material.bind();
+    for (u32 i = 0; i < _point_lights.size(); i++) {
+        point_light_material.set_uniform("light_index", i);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
 }
 
 }

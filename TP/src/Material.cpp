@@ -50,6 +50,7 @@ void Material::bind() const {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_COLOR, GL_ONE);
             glEnable(GL_CULL_FACE);
+        break;
     }
 
     switch(_depth_test_mode) {
@@ -72,6 +73,11 @@ void Material::bind() const {
             glEnable(GL_DEPTH_TEST);
             // We are using reverse-Z
             glDepthFunc(GL_LEQUAL);
+        break;
+
+        case DepthTestMode::Always:
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_ALWAYS);
         break;
     }
 

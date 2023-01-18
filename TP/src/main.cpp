@@ -157,12 +157,14 @@ int main(int, char**) {
     Material deferred_sun = Material::deferred_light("deferred_sun.frag");
     deferred_sun.set_texture(0u, deferred_color);
     deferred_sun.set_texture(1u, deferred_normal);
+    deferred_sun.set_depth_test_mode(DepthTestMode::Reversed);
     deferred_sun.set_write_depth(false);
 
     Material deferred_point_light = Material::deferred_light("deferred_point_light.frag");
     deferred_point_light.set_texture(0u, deferred_color);
     deferred_point_light.set_texture(1u, deferred_normal);
     deferred_point_light.set_blend_mode(BlendMode::Add);
+    deferred_point_light.set_depth_test_mode(DepthTestMode::Reversed);
     deferred_point_light.set_write_depth(false);
 
     int debug_mode = 0;
@@ -184,7 +186,7 @@ int main(int, char**) {
         }
 
         {
-            main_framebuffer.bind();
+            main_framebuffer.bind(true, false);
             scene_view.deferred_lighting(deferred_sun, deferred_point_light);
         }
 

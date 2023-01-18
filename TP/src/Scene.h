@@ -20,7 +20,7 @@ class Scene : NonMovable {
 
         void render(const Camera& camera) const;
         void deferred_lighting(const Camera& camera, const Material& sun_material,
-                               const Material& point_light_material) const;
+                               Material& point_light_material) const;
 
         void add_object(SceneObject obj);
         void add_object(PointLight obj);

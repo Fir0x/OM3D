@@ -63,6 +63,20 @@ void Framebuffer::bind(bool clear) const {
     }
 }
 
+void Framebuffer::bind(bool clear_color, bool clear_depth) const {
+    glBindFramebuffer(GL_FRAMEBUFFER, _handle.get());
+    glViewport(0, 0, _size.x, _size.y);
+
+    if(clear_color || clear_depth) {
+        GLbitfield mask = 0;
+        if (clear_color)
+            mask |= GL_COLOR_BUFFER_BIT;
+        if (clear_depth)
+            mask |= GL_DEPTH_BUFFER_BIT;
+        glClear(mask);
+    }
+}
+
 void Framebuffer::blit(bool depth) const {
     i32 binding = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &binding);

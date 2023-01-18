@@ -19,6 +19,7 @@ enum class DepthTestMode {
     Standard,
     Reversed,
     Equal,
+    Always,
     None
 };
 

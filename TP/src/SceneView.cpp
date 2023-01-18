@@ -20,7 +20,7 @@ void SceneView::render() const {
 }
 
 void SceneView::deferred_lighting(const Material& sun_material,
-                                  const Material& point_light_material) const {
+                                  Material& point_light_material) const {
     if (_scene) {
         _scene->deferred_lighting(_camera, sun_material, point_light_material);
     }
