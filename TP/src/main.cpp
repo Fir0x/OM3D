@@ -57,6 +57,12 @@ void process_inputs(GLFWwindow* window, Camera& camera) {
         if(glfwGetKey(window, 'A') == GLFW_PRESS) {
             movement -= camera.right();
         }
+        if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            movement += glm::vec3(0, 1, 0);
+        }
+        if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+            movement -= glm::vec3(0, 1, 0);
+        }
 
         float speed = 10.0f;
         if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
@@ -148,9 +154,16 @@ int main(int, char**) {
 
     Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), &depth };
 
-    Material deferred_lit = Material::deferred_material();
-    deferred_lit.set_texture(0u, deferred_color);
-    deferred_lit.set_texture(1u, deferred_normal);
+    Material deferred_sun = Material::deferred_light("deferred_sun.frag");
+    deferred_sun.set_texture(0u, deferred_color);
+    deferred_sun.set_texture(1u, deferred_normal);
+    deferred_sun.set_write_depth(false);
+
+    Material deferred_point_light = Material::deferred_light("deferred_point_light.frag");
+    deferred_point_light.set_texture(0u, deferred_color);
+    deferred_point_light.set_texture(1u, deferred_normal);
+    deferred_point_light.set_blend_mode(BlendMode::Add);
+    deferred_point_light.set_write_depth(false);
 
     int debug_mode = 0;
     for(;;) {
@@ -166,7 +179,13 @@ int main(int, char**) {
         }
 
         {
-            scene_view.render_deferred(g_buffer, main_framebuffer, deferred_lit);
+            g_buffer.bind();
+            scene_view.render();
+        }
+
+        {
+            main_framebuffer.bind();
+            scene_view.deferred_lighting(deferred_sun, deferred_point_light);
         }
 
         // Apply a tonemap in compute shader

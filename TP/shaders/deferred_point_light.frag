@@ -2,6 +2,9 @@
 
 #include "utils.glsl"
 
+#define WINDOW_WIDTH 1600
+#define WINDOW_HEIGHT 900
+
 layout(location = 0) out vec3 out_color;
 
 layout(binding = 0) uniform sampler2D in_color;
@@ -15,6 +18,7 @@ layout(binding = 1) buffer PointLights {
     PointLight point_lights[];
 };
 
+uniform int light_index;
 
 vec3 remapNormal(vec3 normal) {
     return normalize(normal * 2.0 - vec3(1.0));
@@ -29,13 +33,17 @@ vec3 unproject(vec2 uv, float depth, mat4 inv_viewproj) {
 void main() {
     vec3 color = texelFetch(in_color, ivec2(gl_FragCoord.xy), 0).xyz;
     vec3 normal = remapNormal(texelFetch(in_normal, ivec2(gl_FragCoord.xy), 0).xyz);
+    vec2 uv = gl_FragCoord.xy / vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    float sun_factor = max(0.0, dot(normal, frame.sun_dir));
+    vec3 position = unproject(uv, gl_FragDepth, inverse(frame.camera.view_proj));
+    PointLight light = point_lights[light_index];
 
-    color *= sun_factor * frame.sun_color;
+    vec3 pos2light = light.position - position;
+    vec3 light_dir = normalize(pos2light);
+    float light_dist = length(pos2light);
 
-    if (frame.sun_dir == vec3(0.0))
-        color = vec3(1.0, 0.0, 0.0);
+    float light_factor = dot(light_dir, normal);
+    color *= light.color * light_factor;
 
     out_color = color;
 }

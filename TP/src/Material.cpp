@@ -29,6 +29,10 @@ void Material::set_texture(u32 slot, std::shared_ptr<Texture> tex) {
     }
 }
 
+void Material::set_write_depth(bool write) {
+    _write_depth = write;
+}
+
 void Material::bind() const {
     switch(_blend_mode) {
         case BlendMode::None:
@@ -41,6 +45,11 @@ void Material::bind() const {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glDisable(GL_CULL_FACE);
         break;
+
+        case BlendMode::Add:
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_COLOR, GL_ONE);
+            glEnable(GL_CULL_FACE);
     }
 
     switch(_depth_test_mode) {
@@ -65,6 +74,8 @@ void Material::bind() const {
             glDepthFunc(GL_LEQUAL);
         break;
     }
+
+    glDepthMask(_write_depth ? GL_TRUE : GL_FALSE);
 
     for(const auto& texture : _textures) {
         texture.second->bind(texture.first);
@@ -95,9 +106,9 @@ Material Material::textured_normal_mapped_material() {
     return material;
 }
 
-Material Material::deferred_material() {
+Material Material::deferred_light(const std::string& frag) {
     Material material;
-    material._program = Program::from_files("deferred_lit.frag", "screen.vert", std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
+    material._program = Program::from_files(frag, "screen.vert", std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
     return material;
 }
 
