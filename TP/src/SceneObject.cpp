@@ -31,4 +31,8 @@ BoundingSphere SceneObject::boundingSphere() const {
     return _mesh->boundingSphere();
 }
 
+std::shared_ptr<StaticMesh> SceneObject::get_mesh() const {
+    return _mesh;
+}
+
 }

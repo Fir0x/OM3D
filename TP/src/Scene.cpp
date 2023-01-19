@@ -21,6 +21,14 @@ void Scene::add_object(PointLight obj) {
     _point_lights.emplace_back(std::move(obj));
 }
 
+const SceneObject& Scene::get_object(int index) const {
+    return _objects[index];
+}
+
+void Scene::set_point_light_volume(std::shared_ptr<StaticMesh> volume) {
+    _point_light_volume = volume;
+}
+
 static bool isInBound(const glm::vec3& object_dir, const glm::vec3& normal, float radius) {
     float distance = glm::dot(object_dir, normal);
     return distance > -radius;
@@ -132,9 +140,15 @@ void Scene::deferred_lighting(const Camera& camera, const Material& sun_material
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     point_light_material.bind();
+
     for (u32 i = 0; i < _point_lights.size(); i++) {
+        glm::mat4 light_transform = glm::mat4(1.0);
+        light_transform = glm::translate(light_transform, _point_lights[i].position());
+        light_transform = glm::scale(light_transform, glm::vec3(_point_lights[i].radius()));
+
+        point_light_material.set_uniform(HASH("model"), light_transform);
         point_light_material.set_uniform("light_index", i);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        _point_light_volume->draw();
     }
 }
 

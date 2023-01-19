@@ -33,6 +33,10 @@ void Material::set_write_depth(bool write) {
     _write_depth = write;
 }
 
+void Material::set_cull_mode(CullMode face) {
+    _cull_mode = face;
+}
+
 void Material::bind() const {
     switch(_blend_mode) {
         case BlendMode::None:
@@ -81,6 +85,16 @@ void Material::bind() const {
         break;
     }
 
+    switch (_cull_mode) {
+        case CullMode::Frontface:
+            glCullFace(GL_FRONT);
+        break;
+        
+        case CullMode::Backface:
+            glCullFace(GL_BACK);
+        break;
+    }
+    
     glDepthMask(_write_depth ? GL_TRUE : GL_FALSE);
 
     for(const auto& texture : _textures) {
@@ -94,7 +108,7 @@ std::shared_ptr<Material> Material::empty_material() {
     auto material = weak_material.lock();
     if(!material) {
         material = std::make_shared<Material>();
-        material->_program = Program::from_files("lit.frag", "basic.vert");
+        material->_program = Program::from_files("deferred_prepass.frag", "basic.vert");
         weak_material = material;
     }
     return material;
@@ -112,9 +126,9 @@ Material Material::textured_normal_mapped_material() {
     return material;
 }
 
-Material Material::deferred_light(const std::string& frag) {
+Material Material::deferred_light(const std::string& vert, const std::string& frag) {
     Material material;
-    material._program = Program::from_files(frag, "screen.vert", std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
+    material._program = Program::from_files(frag, vert, std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
     return material;
 }
 

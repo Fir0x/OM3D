@@ -88,14 +88,25 @@ void process_inputs(GLFWwindow* window, Camera& camera) {
     mouse_pos = new_mouse_pos;
 }
 
+std::shared_ptr<StaticMesh> create_point_light_volume() {
+    auto scene = std::make_unique<Scene>();
 
-std::unique_ptr<Scene> create_default_scene() {
+    // Retrieve sphere mesh
+    auto result = Scene::from_gltf(std::string(data_path) + "sphere.glb");
+    ALWAYS_ASSERT(result.is_ok, "Unable to load sphere scene");
+    scene = std::move(result.value);
+    return scene->get_object(0).get_mesh();
+}
+
+std::unique_ptr<Scene> create_default_scene(std::shared_ptr<StaticMesh> point_light_volume) {
     auto scene = std::make_unique<Scene>();
 
     // Load default cube model
     auto result = Scene::from_gltf(std::string(data_path) + "cube.glb");
     ALWAYS_ASSERT(result.is_ok, "Unable to load default scene");
     scene = std::move(result.value);
+
+    scene->set_point_light_volume(point_light_volume);
 
     // Add lights
     {
@@ -137,35 +148,39 @@ int main(int, char**) {
 
     ImGuiRenderer imgui(window);
 
-    std::unique_ptr<Scene> scene = create_default_scene();
+    std::shared_ptr<StaticMesh> point_light_volume = create_point_light_volume();
+    std::unique_ptr<Scene> scene = create_default_scene(point_light_volume);
     SceneView scene_view(scene.get());
 
     auto tonemap_program = Program::from_file("tonemap.comp");
 
-    Texture depth(window_size, ImageFormat::Depth32_FLOAT);
     Texture lit(window_size, ImageFormat::RGBA16_FLOAT);
     Texture color(window_size, ImageFormat::RGBA8_UNORM);
-    Framebuffer main_framebuffer(&depth, std::array{&lit});
     Framebuffer tonemap_framebuffer(nullptr, std::array{&color});
 
     auto deferred_color = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_sRGB);
     auto deferred_normal = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
-    Framebuffer g_buffer(&depth, std::array{deferred_color.get(), deferred_normal.get()});
+    auto depth = std::make_shared<Texture>(window_size, ImageFormat::Depth32_FLOAT);
 
-    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), &depth };
+    Framebuffer g_buffer(depth.get(), std::array{deferred_color.get(), deferred_normal.get()});
+    Framebuffer main_framebuffer(depth.get(), std::array{&lit});
 
-    Material deferred_sun = Material::deferred_light("deferred_sun.frag");
+    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), depth.get() };
+
+    Material deferred_sun = Material::deferred_light("screen.vert", "deferred_sun.frag");
     deferred_sun.set_texture(0u, deferred_color);
     deferred_sun.set_texture(1u, deferred_normal);
     deferred_sun.set_depth_test_mode(DepthTestMode::Reversed);
     deferred_sun.set_write_depth(false);
 
-    Material deferred_point_light = Material::deferred_light("deferred_point_light.frag");
+    Material deferred_point_light = Material::deferred_light("basic.vert", "deferred_point_light.frag");
     deferred_point_light.set_texture(0u, deferred_color);
     deferred_point_light.set_texture(1u, deferred_normal);
+    deferred_point_light.set_texture(2u, depth);
     deferred_point_light.set_blend_mode(BlendMode::Add);
     deferred_point_light.set_depth_test_mode(DepthTestMode::Reversed);
     deferred_point_light.set_write_depth(false);
+    deferred_point_light.set_cull_mode(CullMode::Frontface);
 
     int debug_mode = 0;
     for(;;) {
@@ -212,6 +227,7 @@ int main(int, char**) {
                     std::cerr << "Unable to load scene (" << buffer << ")" << std::endl;
                 } else {
                     scene = std::move(result.value);
+                    scene->set_point_light_volume(point_light_volume);
                     scene_view = SceneView(scene.get());
                 }
             }

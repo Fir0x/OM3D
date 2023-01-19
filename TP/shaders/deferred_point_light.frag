@@ -9,6 +9,7 @@ layout(location = 0) out vec3 out_color;
 
 layout(binding = 0) uniform sampler2D in_color;
 layout(binding = 1) uniform sampler2D in_normal;
+layout(binding = 2) uniform sampler2D in_depth;
 
 layout(binding = 0) uniform Data {
     FrameData frame;
@@ -32,10 +33,12 @@ vec3 unproject(vec2 uv, float depth, mat4 inv_viewproj) {
 
 void main() {
     vec3 color = texelFetch(in_color, ivec2(gl_FragCoord.xy), 0).xyz;
+    
     vec3 normal = remapNormal(texelFetch(in_normal, ivec2(gl_FragCoord.xy), 0).xyz);
     vec2 uv = gl_FragCoord.xy / vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
+    float depth = texelFetch(in_depth, ivec2(gl_FragCoord.xy), 0).x;
 
-    vec3 position = unproject(uv, gl_FragCoord.z, inverse(frame.camera.view_proj));
+    vec3 position = unproject(uv, depth, inverse(frame.camera.view_proj));
     PointLight light = point_lights[light_index];
 
     vec3 pos2light = light.position - position;
@@ -43,7 +46,9 @@ void main() {
     float light_dist = length(pos2light);
 
     float light_factor = max(0.0, dot(light_dir, normal));
-    color *= light.color * light_factor;
+    vec3 diffuse = int(light_dist <= light.radius) * light.color * light_factor;
+
+    color *= diffuse;
 
     out_color = color;
 }
