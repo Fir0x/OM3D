@@ -98,8 +98,22 @@ void Scene::render(const Camera& camera) const {
     Frustum frustum = camera.build_frustum();
     // Render every object
     for(const SceneObject& obj : _objects) {
+        auto model = obj.transform();
+
         BoundingSphere transformedBoundingSphere = obj.boundingSphere();
-        transformedBoundingSphere.center = glm::vec4(transformedBoundingSphere.center, 1.0f) * obj.transform();
+        transformedBoundingSphere.center = model * glm::vec4(transformedBoundingSphere.center, 1.0f);
+
+        glm::vec3 scale;
+        scale.x = glm::length(glm::vec3(model[0])); // Basis vector X
+        scale.y = glm::length(glm::vec3(model[1])); // Basis vector Y
+        scale.z = glm::length(glm::vec3(model[2])); // Basis vector Z
+        float scale_factor = scale.x;
+        if (scale.y > scale_factor)
+            scale_factor *= scale.y;
+        if (scale.z > scale_factor)
+            scale_factor *= scale.z;
+        transformedBoundingSphere.radius *= scale_factor;
+
         if (cullObject(transformedBoundingSphere, camera_position, frustum))
             continue;
 
