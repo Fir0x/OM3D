@@ -29,6 +29,7 @@ class StaticMesh : NonCopyable {
         StaticMesh(const MeshData& data);
 
         void draw() const;
+        void draw(size_t count) const;
 
         BoundingSphere boundingSphere() const;
 

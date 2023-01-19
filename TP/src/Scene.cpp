@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 
 #include <TypedBuffer.h>
+#include <ObjectBatcher.h>
 
 #include <shader_structs.h>
 
@@ -96,6 +97,7 @@ void Scene::render(const Camera& camera) const {
     // Render every object
     glm::vec3 camera_position = camera.position();
     Frustum frustum = camera.build_frustum();
+    ObjectBatcher batcher;
     // Render every object
     for(const SceneObject& obj : _objects) {
         auto model = obj.transform();
@@ -117,8 +119,10 @@ void Scene::render(const Camera& camera) const {
         if (cullObject(transformedBoundingSphere, camera_position, frustum))
             continue;
 
-        obj.render();
+        batcher.add_object(obj);
     }
+
+    batcher.render();
 }
 
 void Scene::deferred_lighting(const Camera& camera, const Material& sun_material,
@@ -160,7 +164,9 @@ void Scene::deferred_lighting(const Camera& camera, const Material& sun_material
         light_transform = glm::translate(light_transform, _point_lights[i].position());
         light_transform = glm::scale(light_transform, glm::vec3(_point_lights[i].radius()));
 
-        point_light_material.set_uniform(HASH("model"), light_transform);
+        TypedBuffer<glm::mat4> model_buffer(&light_transform, 1);
+        model_buffer.bind(BufferUsage::Storage, 2);
+        
         point_light_material.set_uniform("light_index", i);
         _point_light_volume->draw();
     }

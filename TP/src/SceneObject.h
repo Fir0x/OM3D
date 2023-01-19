@@ -23,6 +23,7 @@ class SceneObject : NonCopyable {
         BoundingSphere boundingSphere() const;
 
         std::shared_ptr<StaticMesh> get_mesh() const;
+        std::shared_ptr<Material> get_material() const;
 
     private:
         glm::mat4 _transform = glm::mat4(1.0f);

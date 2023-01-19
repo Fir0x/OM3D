@@ -53,6 +53,14 @@ StaticMesh::StaticMesh(const MeshData& data) :
 }
 
 void StaticMesh::draw() const {
+    draw(1);
+}
+
+BoundingSphere StaticMesh::boundingSphere() const {
+    return _bounding_sphere;
+}
+
+void StaticMesh::draw(size_t count) const {
     _vertex_buffer.bind(BufferUsage::Attribute);
     _index_buffer.bind(BufferUsage::Index);
 
@@ -73,11 +81,8 @@ void StaticMesh::draw() const {
     glEnableVertexAttribArray(3);
     glEnableVertexAttribArray(4);
 
-    glDrawElements(GL_TRIANGLES, int(_index_buffer.element_count()), GL_UNSIGNED_INT, nullptr);
+    glDrawElementsInstanced(GL_TRIANGLES, int(_index_buffer.element_count()), GL_UNSIGNED_INT, nullptr, count);
 }
 
-BoundingSphere StaticMesh::boundingSphere() const {
-    return _bounding_sphere;
-}
 
 }
