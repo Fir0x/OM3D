@@ -102,7 +102,7 @@ std::unique_ptr<Scene> create_default_scene(std::shared_ptr<StaticMesh> point_li
     auto scene = std::make_unique<Scene>();
 
     // Load default cube model
-    auto result = Scene::from_gltf(std::string(data_path) + "forest_big.glb");
+    auto result = Scene::from_gltf(std::string(data_path) + "cube.glb");
     ALWAYS_ASSERT(result.is_ok, "Unable to load default scene");
     scene = std::move(result.value);
 
@@ -235,7 +235,7 @@ int main(int, char**) {
             if (ImGui::BeginTable("Debug_table", 1))
             {
                 static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth" };
-                for (size_t i = 0; i < radio_names.size(); i++)
+                for (int i = 0; i < radio_names.size(); i++)
                 {
                     ImGui::TableNextColumn();
                     ImGui::PushID(i);

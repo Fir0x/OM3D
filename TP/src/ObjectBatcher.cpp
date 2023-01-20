@@ -26,7 +26,7 @@ namespace OM3D
             model_buffer.bind(BufferUsage::Storage, 2);
 
             material->bind();
-            batch.mesh->draw(batch.models.size());
+            batch.mesh->draw(int(batch.models.size()));
         }
    }
 } // namespace OM3D

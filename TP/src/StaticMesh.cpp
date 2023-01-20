@@ -60,7 +60,7 @@ BoundingSphere StaticMesh::boundingSphere() const {
     return _bounding_sphere;
 }
 
-void StaticMesh::draw(size_t count) const {
+void StaticMesh::draw(int count) const {
     _vertex_buffer.bind(BufferUsage::Attribute);
     _index_buffer.bind(BufferUsage::Index);
 
