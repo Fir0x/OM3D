@@ -205,6 +205,10 @@ int main(int, char**) {
             scene_view.deferred_lighting(deferred_sun, deferred_point_light);
         }
 
+        {
+            // TODO Render tile impact in texture
+        }
+
         // Apply a tonemap in compute shader
         {
             tonemap_program->bind();
