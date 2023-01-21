@@ -1,0 +1,120 @@
+#version 450
+
+#include "structs.glsl"
+
+#define MAX_LIGHT_COUNT 1024
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0) uniform sampler2D g_color;
+layout(binding = 1) uniform sampler2D g_normal;
+layout(binding = 2) uniform sampler2D g_depth;
+layout(rgba16f, binding = 3) uniform writeonly image2D out_color;
+
+layout(std430, binding = 0) readonly buffer Lights {
+    PointLight lights[];
+};
+
+uniform mat4 projection;
+uniform mat4 inv_view_proj;
+uniform vec2 screen_size;
+uniform uint light_count;
+
+shared uint min_depth;
+shared uint max_depth;
+shared uint visible_lights_indices[MAX_LIGHT_COUNT];
+shared uint visible_light_count;
+
+bool intersect_light(PointLight light, vec4 frustum_normals[6]) {
+    bool in_frustum = true;
+    #pragma unroll 6
+    for (uint i = 0; i < 6; i++) {
+        float d = dot(normalize(frustum_normals[i]), vec4(light.position, 1.0));
+        in_frustum = in_frustum && (d > -light.radius);
+    }
+
+    return in_frustum;
+}
+
+vec3 remapNormal(vec3 normal) {
+    return normalize(normal * 2.0 - vec3(1.0));
+}
+
+vec3 unproject(vec2 uv, float depth, mat4 inv_viewproj) {
+    const vec3 ndc = vec3(uv * 2.0 - vec2(1.0), depth);
+    const vec4 p = inv_viewproj * vec4(ndc, 1.0);
+    return p.xyz / p.w;
+}
+
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    if (coord.x >= screen_size.x && coord.y >= screen_size.y)
+        return;
+        
+    float depth = texelFetch(g_depth, coord, 0).x;
+    if (gl_LocalInvocationIndex == 0) {
+        min_depth = 0xFFFFFF;
+        max_depth = 0;
+        visible_light_count = 0;
+    }
+
+    barrier();
+
+    uint udepth = floatBitsToUint(depth);
+    atomicMin(min_depth, udepth);
+    atomicMax(max_depth, udepth);
+
+    barrier();
+    
+    uint light_limit = min(light_count, MAX_LIGHT_COUNT);
+
+    vec2 tile_scale = screen_size / (2.0 * gl_WorkGroupSize.xy);
+    vec2 tile_bias = tile_scale - gl_WorkGroupID.xy;
+    vec4 c1 = vec4(projection[0][0] * tile_scale.x, 0.0, -tile_bias.x, 0.0);
+    vec4 c2 = vec4(0.0, projection[1][1] * tile_scale.y,  -tile_bias.y, 0.0);
+    vec4 c4 = vec4(0.0, 0.0, -1.0, 0.0);
+
+    float mind = 1.0 / uintBitsToFloat(min_depth);
+    float maxd = 1.0 / uintBitsToFloat(max_depth);
+    vec4 frustum_normals[6] = {
+        c4 - c1, // Right
+        c4 + c1, // Left
+        c4 - c2, // Top
+        c4 + c2, // Bottom
+        vec4(0.0, 0.0, 1.0, maxd), // Far
+        vec4(0.0, 0.0, -1.0, -mind) // Near
+    };
+
+    for (uint i = gl_LocalInvocationIndex; i < light_limit; i += gl_WorkGroupSize.x * gl_WorkGroupSize.y) {
+        bool in_frustum = intersect_light(lights[i], frustum_normals);
+        if (in_frustum) {
+            uint offset = atomicAdd(visible_light_count, 1);
+            visible_lights_indices[offset] = i;
+        }
+    }
+
+    barrier();
+    
+    vec3 color = vec3(vec2(gl_WorkGroupID.xy) / gl_NumWorkGroups.xy, float(visible_light_count) / float(light_count));
+    float d1 = uintBitsToFloat(min_depth);
+    float d2 = uintBitsToFloat(max_depth);
+    //color = vec3(vec2(gl_WorkGroupID.xy) / gl_NumWorkGroups.xy, (d2 - d1) * 1000);
+//    vec3 color = texelFetch(g_color, coord, 0).xyz;
+//    vec3 normal = remapNormal(texelFetch(g_normal, coord, 0).xyz);
+//    vec2 uv = coord / screen_size;
+//
+//    vec3 position = unproject(uv, depth, inv_view_proj);
+//    for (uint i = 0; i < visible_light_count; i++) {
+//        PointLight light = lights[visible_lights_indices[i]];
+//        vec3 pos2light = light.position - position;
+//        vec3 light_dir = normalize(pos2light);
+//        float light_dist = length(pos2light);
+//
+//        float light_factor = max(0.0, dot(light_dir, normal));
+//        vec3 diffuse = int(light_dist <= light.radius) * light.color * light_factor;
+//
+//        color += color * diffuse;
+//    }
+    
+    imageStore(out_color, coord, vec4(color, 1.0));
+}

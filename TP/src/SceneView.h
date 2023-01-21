@@ -17,6 +17,9 @@ class SceneView {
         void deferred_lighting(const Material& sun_material,
                                Material& point_light_material) const;
         void debug_light_volumes(const Material& debug_material) const;
+        void debug_light_cluster(std::shared_ptr<Program> debug_cluster_program,
+                                 const glm::uvec2& screen_size, Texture* g_color,
+                                Texture* g_normal, Texture* g_depth, Texture* out_texture) const;
 
     private:
         const Scene* _scene = nullptr;

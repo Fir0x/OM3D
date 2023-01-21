@@ -224,6 +224,12 @@ void Program::set_uniform(u32 name_hash, u32 value) {
     }
 }
 
+void Program::set_uniform(u32 name_hash, int value) {
+    if (const int loc = find_location(name_hash); loc >= 0) {
+        glProgramUniform1i(_handle.get(), loc, value);
+    }
+}
+
 void Program::set_uniform(u32 name_hash, float value) {
     if(const int loc = find_location(name_hash); loc >= 0) {
         glProgramUniform1f(_handle.get(), loc, value);

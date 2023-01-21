@@ -32,4 +32,13 @@ void SceneView::debug_light_volumes(const Material& debug_material) const {
     }
 }
 
+void SceneView::debug_light_cluster(std::shared_ptr<Program> debug_cluster_program,
+                                    const glm::uvec2& screen_size, Texture* g_color,
+                                    Texture* g_normal, Texture* g_depth, Texture* out_texture) const
+{
+    if (_scene) {
+        _scene->debug_light_cluster(_camera, debug_cluster_program, screen_size, g_color, g_normal, g_depth, out_texture);
+    }
+}
+
 }

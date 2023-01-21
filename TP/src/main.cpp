@@ -113,14 +113,14 @@ std::unique_ptr<Scene> create_default_scene(std::shared_ptr<StaticMesh> point_li
         PointLight light;
         light.set_position(glm::vec3(1.0f, 2.0f, 4.0f));
         light.set_color(glm::vec3(0.0f, 10.0f, 0.0f));
-        light.set_radius(4.0f);
+        light.set_radius(3.0f);
         scene->add_object(std::move(light));
     }
     {
         PointLight light;
         light.set_position(glm::vec3(1.0f, 2.0f, -4.0f));
         light.set_color(glm::vec3(10.0f, 0.0f, 0.0f));
-        light.set_radius(4.0f);
+        light.set_radius(3.0f);
         scene->add_object(std::move(light));
     }
 
@@ -133,6 +133,7 @@ enum DebugMode {
     Normal,
     Depth,
     LightVolume,
+    LightClusters,
 };
 
 int main(int, char**) {
@@ -165,19 +166,12 @@ int main(int, char**) {
     Texture color(window_size, ImageFormat::RGBA8_UNORM);
     Framebuffer tonemap_framebuffer(nullptr, std::array{&color});
 
-    auto deferred_color = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_sRGB);
+    auto deferred_color = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
     auto deferred_normal = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
     auto depth = std::make_shared<Texture>(window_size, ImageFormat::Depth32_FLOAT);
 
     Framebuffer g_buffer(depth.get(), std::array{deferred_color.get(), deferred_normal.get()});
     Framebuffer main_framebuffer(depth.get(), std::array{&lit});
-
-    // Debug textures
-    auto light_volumes = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
-    auto remaped_depth = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
-    auto tiles_light_impact = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
-
-    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), depth.get(), light_volumes.get()};
 
     Material deferred_sun = Material::from_files("screen.vert", "deferred_sun.frag");
     deferred_sun.set_texture(0u, deferred_color);
@@ -194,7 +188,16 @@ int main(int, char**) {
     deferred_point_light.set_write_depth(false);
     deferred_point_light.set_cull_mode(CullMode::Frontface);
 
-    // Debug materials
+    auto cluster_program = Program::from_file("clustering.comp");
+    auto debug_cluster_program = Program::from_file("debug_clusters.comp");
+
+    // Debug textures
+    auto light_volumes = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
+    Texture light_clusters(window_size, ImageFormat::RGBA16_FLOAT);
+
+    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), depth.get(), light_volumes.get(), &light_clusters };
+
+    // Debug
     Material light_volumes_renderer = Material::from_files("basic.vert", "debug_light_volumes.frag");
 
     int debug_mode = 0;
@@ -222,8 +225,10 @@ int main(int, char**) {
                 scene_view.debug_light_volumes(light_volumes_renderer);
         }
 
+        if (debug_mode == DebugMode::LightClusters)
         {
-            // TODO Render tile impact in texture
+            scene_view.debug_light_cluster(debug_cluster_program, window_size, deferred_color.get(),
+                                           deferred_normal.get(), depth.get(), &light_clusters);
         }
 
         // Apply a tonemap in compute shader
@@ -259,7 +264,7 @@ int main(int, char**) {
 
             if (ImGui::BeginTable("Debug_table", 1))
             {
-                static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth", "Liht volumes"};
+                static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth", "Light volumes", "Light clusters"};
                 for (int i = 0; i < radio_names.size(); i++)
                 {
                     ImGui::TableNextColumn();

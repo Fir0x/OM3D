@@ -1,11 +1,9 @@
 #version 450
 
-// compute shader of a tonemap
-
 layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(std430, binding = 0) writeonly buffer Tiles {
-    bool tile_light_infos[];
+    int tile_light_infos[];
 };
 
 struct Light {
@@ -17,7 +15,7 @@ layout(std430, binding = 1) readonly buffer Lights {
     Light lights[];
 };
 
-uniform int light_count;
+uniform uint light_count;
 uniform mat4 inv_view_proj;
 uniform vec3 camera_position;
 
@@ -76,18 +74,27 @@ Frustum buildFrustum() {
 
 void main() {
     Frustum frustum = buildFrustum();
+
+    int impacting_light_count = 0;
+    uint buffer_start = (gl_LocalInvocationID.y * gl_WorkGroupSize.x + gl_LocalInvocationID.x) * (light_count + 1);
+
     for (int i = 0; i < light_count; i++) {
         Light light = lights[i];
 
         vec3 light_dir = light.center - camera_position;
 
         bool in_bound = isInBound(light_dir, frustum.top_plane_normal, light.radius);
-        in_bound &= isInBound(light_dir, frustum.bottom_plane_normal, light.radius);
-        in_bound &= isInBound(light_dir, frustum.right_plane_normal, light.radius);
-        in_bound &= isInBound(light_dir, frustum.left_plane_normal, light.radius);
-        in_bound &= isInBound(light_dir, frustum.near_plane_normal, light.radius);
+        in_bound = in_bound && isInBound(light_dir, frustum.bottom_plane_normal, light.radius);
+        in_bound = in_bound && isInBound(light_dir, frustum.right_plane_normal, light.radius);
+        in_bound = in_bound && isInBound(light_dir, frustum.left_plane_normal, light.radius);
+        in_bound = in_bound && isInBound(light_dir, frustum.near_plane_normal, light.radius);
 
-        uint buffer_index = (gl_LocalInvocationID.y * gl_WorkGroupSize.x + gl_LocalInvocationID.x) * light_count + i;
-        tile_light_infos[buffer_index] = in_bound;
+        uint buffer_index = buffer_start + impacting_light_count + 1;
+
+        tile_light_infos[buffer_index] = i;
+
+        impacting_light_count += int(in_bound);
     }
+
+    tile_light_infos[buffer_start] = impacting_light_count;
 }

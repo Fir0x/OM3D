@@ -198,4 +198,41 @@ void Scene::debug_light_volumes(const Camera& camera, const Material& debug_mate
     }
 }
 
+void Scene::debug_light_cluster(const Camera& camera, std::shared_ptr<Program> debug_cluster_program,
+                                const glm::uvec2& screen_size, Texture* g_color, Texture* g_normal,
+                                Texture* g_depth, Texture* out_texture) const
+{
+    TypedBuffer<shader::PointLight> light_buffer(nullptr, std::max(_point_lights.size(), size_t(1)));
+    {
+        auto mapping = light_buffer.map(AccessType::WriteOnly);
+        for (size_t i = 0; i != _point_lights.size(); ++i) {
+            const auto& light = _point_lights[i];
+            glm::vec4 view_position = camera.view_matrix() * glm::vec4(light.position(), 1.0);
+            view_position /= view_position.w;
+            mapping[i] = {
+                glm::vec3(view_position),
+                light.radius(),
+                light.color(),
+                0.0f
+            };
+        }
+    }
+    light_buffer.bind(BufferUsage::Storage, 0);
+
+    g_color->bind(0);
+    g_normal->bind(1);
+    g_depth->bind(2);
+    out_texture->bind_as_image(3, AccessType::WriteOnly);
+
+    debug_cluster_program->bind();
+
+    debug_cluster_program->set_uniform("projection", camera.projection_matrix());
+    debug_cluster_program->set_uniform("light_count", u32(_point_lights.size()));
+    debug_cluster_program->set_uniform("screen_size", screen_size);
+
+    glDispatchCompute(screen_size.x / 16, screen_size.y / 16, 1);
+
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+}
+
 }
