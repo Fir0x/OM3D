@@ -51,7 +51,7 @@ class Material {
         static std::shared_ptr<Material> empty_material();
         static Material textured_material();
         static Material textured_normal_mapped_material();
-        static Material deferred_light(const std::string& vert, const std::string& frag);
+        static Material from_files(const std::string& vert, const std::string& frag);
 
 
     private:

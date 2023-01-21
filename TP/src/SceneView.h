@@ -16,6 +16,7 @@ class SceneView {
         void render() const;
         void deferred_lighting(const Material& sun_material,
                                Material& point_light_material) const;
+        void debug_light_volumes(const Material& debug_material) const;
 
     private:
         const Scene* _scene = nullptr;

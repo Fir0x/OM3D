@@ -113,20 +113,27 @@ std::unique_ptr<Scene> create_default_scene(std::shared_ptr<StaticMesh> point_li
         PointLight light;
         light.set_position(glm::vec3(1.0f, 2.0f, 4.0f));
         light.set_color(glm::vec3(0.0f, 10.0f, 0.0f));
-        light.set_radius(100.0f);
+        light.set_radius(4.0f);
         scene->add_object(std::move(light));
     }
     {
         PointLight light;
         light.set_position(glm::vec3(1.0f, 2.0f, -4.0f));
         light.set_color(glm::vec3(10.0f, 0.0f, 0.0f));
-        light.set_radius(50.0f);
+        light.set_radius(4.0f);
         scene->add_object(std::move(light));
     }
 
     return scene;
 }
 
+enum DebugMode {
+    None,
+    Color,
+    Normal,
+    Depth,
+    LightVolume,
+};
 
 int main(int, char**) {
     DEBUG_ASSERT([] { std::cout << "Debug asserts enabled" << std::endl; return true; }());
@@ -165,15 +172,20 @@ int main(int, char**) {
     Framebuffer g_buffer(depth.get(), std::array{deferred_color.get(), deferred_normal.get()});
     Framebuffer main_framebuffer(depth.get(), std::array{&lit});
 
-    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), depth.get() };
+    // Debug textures
+    auto light_volumes = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
+    auto remaped_depth = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
+    auto tiles_light_impact = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
 
-    Material deferred_sun = Material::deferred_light("screen.vert", "deferred_sun.frag");
+    Texture* debug_refs[] = { &lit, deferred_color.get(), deferred_normal.get(), depth.get(), light_volumes.get()};
+
+    Material deferred_sun = Material::from_files("screen.vert", "deferred_sun.frag");
     deferred_sun.set_texture(0u, deferred_color);
     deferred_sun.set_texture(1u, deferred_normal);
     deferred_sun.set_depth_test_mode(DepthTestMode::Reversed);
     deferred_sun.set_write_depth(false);
 
-    Material deferred_point_light = Material::deferred_light("basic.vert", "deferred_point_light.frag");
+    Material deferred_point_light = Material::from_files("basic.vert", "deferred_point_light.frag");
     deferred_point_light.set_texture(0u, deferred_color);
     deferred_point_light.set_texture(1u, deferred_normal);
     deferred_point_light.set_texture(2u, depth);
@@ -181,6 +193,9 @@ int main(int, char**) {
     deferred_point_light.set_depth_test_mode(DepthTestMode::Reversed);
     deferred_point_light.set_write_depth(false);
     deferred_point_light.set_cull_mode(CullMode::Frontface);
+
+    // Debug materials
+    Material light_volumes_renderer = Material::from_files("basic.vert", "debug_light_volumes.frag");
 
     int debug_mode = 0;
     for(;;) {
@@ -203,6 +218,8 @@ int main(int, char**) {
         {
             main_framebuffer.bind(true, false);
             scene_view.deferred_lighting(deferred_sun, deferred_point_light);
+            if (debug_mode == DebugMode::LightVolume)
+                scene_view.debug_light_volumes(light_volumes_renderer);
         }
 
         {
@@ -212,7 +229,11 @@ int main(int, char**) {
         // Apply a tonemap in compute shader
         {
             tonemap_program->bind();
-            debug_refs[debug_mode]->bind(0);
+            if (debug_mode == DebugMode::LightVolume)
+                debug_refs[DebugMode::None]->bind(0);
+            else
+                debug_refs[debug_mode]->bind(0);
+
             color.bind_as_image(1, AccessType::WriteOnly);
             glDispatchCompute(align_up_to(window_size.x, 8), align_up_to(window_size.y, 8), 1);
         }
@@ -238,7 +259,7 @@ int main(int, char**) {
 
             if (ImGui::BeginTable("Debug_table", 1))
             {
-                static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth" };
+                static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth", "Liht volumes"};
                 for (int i = 0; i < radio_names.size(); i++)
                 {
                     ImGui::TableNextColumn();

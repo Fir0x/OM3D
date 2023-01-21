@@ -126,7 +126,7 @@ Material Material::textured_normal_mapped_material() {
     return material;
 }
 
-Material Material::deferred_light(const std::string& vert, const std::string& frag) {
+Material Material::from_files(const std::string& vert, const std::string& frag) {
     Material material;
     material._program = Program::from_files(frag, vert, std::array<std::string, 2>{"TEXTURED", "NORMAL_MAPPED"});
     return material;

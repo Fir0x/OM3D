@@ -172,4 +172,30 @@ void Scene::deferred_lighting(const Camera& camera, const Material& sun_material
     }
 }
 
+void Scene::debug_light_volumes(const Camera& camera, const Material& debug_material) const {
+    // Fill and bind frame data buffer
+    TypedBuffer<shader::FrameData> buffer(nullptr, 1);
+    {
+        auto mapping = buffer.map(AccessType::WriteOnly);
+        mapping[0].camera.view_proj = camera.view_proj_matrix();
+        mapping[0].point_light_count = u32(_point_lights.size());
+        mapping[0].sun_color = glm::vec3(1.0f, 1.0f, 1.0f);
+        mapping[0].sun_dir = glm::normalize(_sun_direction);
+    }
+    buffer.bind(BufferUsage::Uniform, 0);
+
+    debug_material.bind();
+
+    for (u32 i = 0; i < _point_lights.size(); i++) {
+        glm::mat4 light_transform = glm::mat4(1.0);
+        light_transform = glm::translate(light_transform, _point_lights[i].position());
+        light_transform = glm::scale(light_transform, glm::vec3(_point_lights[i].radius()));
+
+        TypedBuffer<glm::mat4> model_buffer(&light_transform, 1);
+        model_buffer.bind(BufferUsage::Storage, 2);
+
+        _point_light_volume->draw();
+    }
+}
+
 }

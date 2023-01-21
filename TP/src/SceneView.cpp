@@ -26,4 +26,10 @@ void SceneView::deferred_lighting(const Material& sun_material,
     }
 }
 
+void SceneView::debug_light_volumes(const Material& debug_material) const {
+    if (_scene) {
+        _scene->debug_light_volumes(_camera, debug_material);
+    }
+}
+
 }
