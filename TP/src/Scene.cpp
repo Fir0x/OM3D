@@ -8,6 +8,7 @@
 #include <shader_structs.h>
 
 #include <iostream>
+#include <glm/gtx/string_cast.hpp>
 
 namespace OM3D {
 
@@ -30,13 +31,13 @@ void Scene::set_point_light_volume(std::shared_ptr<StaticMesh> volume) {
     _point_light_volume = volume;
 }
 
-static bool isInBound(const glm::vec3& object_dir, const glm::vec3& normal, float radius) {
+static bool isInBound(const glm::vec4& object_dir, const glm::vec4& normal, float radius) {
     float distance = glm::dot(object_dir, normal);
-    return distance > -radius;
+    return distance >= -radius;
 }
 
-static bool cullObject(const BoundingSphere& bounding_sphere, const glm::vec3& camera_position, const Frustum& frustum) {
-    glm::vec3 object_dir = bounding_sphere.center - camera_position;
+static bool cullObject(const BoundingSphere& bounding_sphere, const Camera& camera, const Frustum& frustum) {
+    glm::vec4 object_dir = camera.view_matrix() * glm::vec4(bounding_sphere.center, 1.0);
 
     {
         if (!isInBound(object_dir, frustum._top_normal, bounding_sphere.radius))
@@ -116,7 +117,7 @@ void Scene::render(const Camera& camera) const {
             scale_factor *= scale.z;
         transformedBoundingSphere.radius *= scale_factor;
 
-        if (cullObject(transformedBoundingSphere, camera_position, frustum))
+        if (cullObject(transformedBoundingSphere, camera, frustum))
             continue;
 
         batcher.add_object(obj);
@@ -207,10 +208,8 @@ void Scene::debug_light_cluster(const Camera& camera, std::shared_ptr<Program> d
         auto mapping = light_buffer.map(AccessType::WriteOnly);
         for (size_t i = 0; i != _point_lights.size(); ++i) {
             const auto& light = _point_lights[i];
-            glm::vec4 view_position = camera.view_matrix() * glm::vec4(light.position(), 1.0);
-            view_position /= view_position.w;
             mapping[i] = {
-                glm::vec3(view_position),
+                light.position(),
                 light.radius(),
                 light.color(),
                 0.0f
@@ -227,6 +226,7 @@ void Scene::debug_light_cluster(const Camera& camera, std::shared_ptr<Program> d
     debug_cluster_program->bind();
 
     debug_cluster_program->set_uniform("projection", camera.projection_matrix());
+    debug_cluster_program->set_uniform("view", camera.view_matrix());
     debug_cluster_program->set_uniform("light_count", u32(_point_lights.size()));
     debug_cluster_program->set_uniform("screen_size", screen_size);
 

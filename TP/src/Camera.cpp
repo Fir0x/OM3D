@@ -1,5 +1,7 @@
 #include "Camera.h"
 
+#include <glm/gtc/matrix_access.hpp>
+
 namespace OM3D {
 
 static glm::vec3 extract_position(const glm::mat4& view) {
@@ -79,27 +81,17 @@ void Camera::update() {
 }
 
 Frustum Camera::build_frustum() const {
-    const glm::vec3 camera_forward = forward();
-    const glm::vec3 camera_up = up();
-    const glm::vec3 camera_right = right();
-    
     Frustum frustum;
-    frustum._near_normal = camera_forward;
+    auto c1 = glm::row(_projection, 0);
+    auto c2 = glm::row(_projection, 1);
+    auto c3 = glm::row(_projection, 2);
+    auto c4 = glm::row(_projection, 3);
 
-    const float half_fov = _fov_y * 0.5f;
-    const float half_fov_v = std::atan(std::tan(half_fov) * _aspect_ratio);
-    {
-        const float c = std::cos(half_fov);
-        const float s = std::sin(half_fov);
-        frustum._bottom_normal = camera_forward * s + camera_up * c;
-        frustum._top_normal = camera_forward * s - camera_up * c;
-    }
-    {
-        const float c = std::cos(half_fov_v);
-        const float s = std::sin(half_fov_v);
-        frustum._left_normal = camera_forward * s + camera_right * c;
-        frustum._right_normal = camera_forward * s - camera_right * c;
-    }
+    frustum._left_normal = glm::normalize(c4 + c1);
+    frustum._right_normal = glm::normalize(c4 - c1);
+    frustum._bottom_normal = glm::normalize(c4 + c2);
+    frustum._top_normal = glm::normalize(c4 - c2);
+    frustum._near_normal = glm::normalize(c4 + c3);
 
     return frustum;
 }
