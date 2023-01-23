@@ -199,10 +199,20 @@ void Scene::debug_light_volumes(const Camera& camera, const Material& debug_mate
     }
 }
 
-void Scene::debug_light_cluster(const Camera& camera, std::shared_ptr<Program> debug_cluster_program,
+void Scene::tiled_deferred_lighting(const Camera& camera, std::shared_ptr<Program> debug_cluster_program,
                                 const glm::uvec2& screen_size, Texture* g_color, Texture* g_normal,
                                 Texture* g_depth, Texture* out_texture) const
 {
+    TypedBuffer<shader::FrameData> buffer(nullptr, 1);
+    {
+        auto mapping = buffer.map(AccessType::WriteOnly);
+        mapping[0].camera.view_proj = camera.view_proj_matrix();
+        mapping[0].point_light_count = u32(_point_lights.size());
+        mapping[0].sun_color = glm::vec3(1.0f, 1.0f, 1.0f);
+        mapping[0].sun_dir = glm::normalize(_sun_direction);
+    }
+    buffer.bind(BufferUsage::Uniform, 0);
+
     TypedBuffer<shader::PointLight> light_buffer(nullptr, std::max(_point_lights.size(), size_t(1)));
     {
         auto mapping = light_buffer.map(AccessType::WriteOnly);
@@ -216,7 +226,7 @@ void Scene::debug_light_cluster(const Camera& camera, std::shared_ptr<Program> d
             };
         }
     }
-    light_buffer.bind(BufferUsage::Storage, 0);
+    light_buffer.bind(BufferUsage::Storage, 1);
 
     g_color->bind(0);
     g_normal->bind(1);

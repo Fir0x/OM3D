@@ -112,15 +112,15 @@ std::unique_ptr<Scene> create_default_scene(std::shared_ptr<StaticMesh> point_li
     {
         PointLight light;
         light.set_position(glm::vec3(1.0f, 2.0f, 4.0f));
-        light.set_color(glm::vec3(0.0f, 10.0f, 0.0f));
-        light.set_radius(3.0f);
+        light.set_color(glm::vec3(0.0f, 50.0f, 0.0f));
+        light.set_radius(4.0f);
         scene->add_object(std::move(light));
     }
     {
         PointLight light;
         light.set_position(glm::vec3(1.0f, 2.0f, -4.0f));
-        light.set_color(glm::vec3(10.0f, 0.0f, 0.0f));
-        light.set_radius(3.0f);
+        light.set_color(glm::vec3(50.0f, 0.0f, 0.0f));
+        light.set_radius(4.0f);
         scene->add_object(std::move(light));
     }
 
@@ -134,6 +134,11 @@ enum DebugMode {
     Depth,
     LightVolume,
     LightClusters,
+};
+
+enum RenderMode {
+    Deferred,
+    TiledDeferred,
 };
 
 int main(int, char**) {
@@ -200,7 +205,8 @@ int main(int, char**) {
     // Debug
     Material light_volumes_renderer = Material::from_files("basic.vert", "debug_light_volumes.frag");
 
-    int debug_mode = 0;
+    int debug_mode = DebugMode::None;
+    int render_mode = RenderMode::Deferred;
     for(;;) {
         glfwPollEvents();
         if(glfwWindowShouldClose(window) || glfwGetKey(window, GLFW_KEY_ESCAPE)) {
@@ -218,17 +224,24 @@ int main(int, char**) {
             scene_view.render();
         }
 
-        {
-            main_framebuffer.bind(true, false);
-            scene_view.deferred_lighting(deferred_sun, deferred_point_light);
-            if (debug_mode == DebugMode::LightVolume)
-                scene_view.debug_light_volumes(light_volumes_renderer);
+        if (debug_mode == DebugMode::None || debug_mode == DebugMode::LightVolume) {
+            if (render_mode == RenderMode::Deferred) {
+                main_framebuffer.bind(true, false);
+                scene_view.deferred_lighting(deferred_sun, deferred_point_light);
+            }
+            else {
+                scene_view.tiled_deferred_lighting(cluster_program, window_size, deferred_color.get(),
+                                                   deferred_normal.get(), depth.get(), &lit);
+            }
         }
 
-        if (debug_mode == DebugMode::LightClusters)
-        {
-            scene_view.debug_light_cluster(debug_cluster_program, window_size, deferred_color.get(),
-                                           deferred_normal.get(), depth.get(), &light_clusters);
+        if (debug_mode == DebugMode::LightVolume) {
+            main_framebuffer.bind(false, false);
+            scene_view.debug_light_volumes(light_volumes_renderer);
+        }
+        else if (debug_mode == DebugMode::LightClusters) {
+            scene_view.tiled_deferred_lighting(debug_cluster_program, window_size, deferred_color.get(),
+                                               deferred_normal.get(), depth.get(), &light_clusters);
         }
 
         // Apply a tonemap in compute shader
@@ -262,17 +275,40 @@ int main(int, char**) {
                 }
             }
 
-            if (ImGui::BeginTable("Debug_table", 1))
-            {
-                static std::vector<std::string> radio_names = { "None", "Color", "Normal", "Depth", "Light volumes", "Light clusters"};
-                for (int i = 0; i < radio_names.size(); i++)
-                {
-                    ImGui::TableNextColumn();
-                    ImGui::PushID(i);
-                    ImGui::RadioButton(radio_names[i].c_str(), &debug_mode, i);
-                    ImGui::PopID();
+            if (ImGui::CollapsingHeader("Debug mode")) {
+                if (ImGui::BeginTable("Debug_table", 1)) {
+                    static std::vector<std::string> radio_names = {
+                        "None", "G Buffer Color",
+                        "G Buffer Normal", "G Buffer Depth",
+                        "Light volumes", "Light clusters"
+                    };
+
+                    for (int i = 0; i < radio_names.size(); i++)
+                    {
+                        ImGui::TableNextColumn();
+                        ImGui::PushID(i);
+                        ImGui::RadioButton(radio_names[i].c_str(), &debug_mode, i);
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
                 }
-                ImGui::EndTable();
+            }
+
+            if (ImGui::CollapsingHeader("Render mode")) {
+                if (ImGui::BeginTable("Render_table", 1)) {
+                    static std::vector<std::string> radio_names = {
+                        "Deferred", "Tiled deferred"
+                    };
+
+                    for (int i = 0; i < radio_names.size(); i++)
+                    {
+                        ImGui::TableNextColumn();
+                        ImGui::PushID(i);
+                        ImGui::RadioButton(radio_names[i].c_str(), &render_mode, i);
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
+                }
             }
         }
         imgui.finish();

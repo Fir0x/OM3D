@@ -32,11 +32,12 @@ vec3 unproject(vec2 uv, float depth, mat4 inv_viewproj) {
 }
 
 void main() {
-    vec3 color = texelFetch(in_color, ivec2(gl_FragCoord.xy), 0).xyz;
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    vec3 color = texelFetch(in_color, coord, 0).xyz;
     
-    vec3 normal = remapNormal(texelFetch(in_normal, ivec2(gl_FragCoord.xy), 0).xyz);
-    vec2 uv = gl_FragCoord.xy / vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
-    float depth = texelFetch(in_depth, ivec2(gl_FragCoord.xy), 0).x;
+    vec3 normal = remapNormal(texelFetch(in_normal, coord, 0).xyz);
+    vec2 uv = coord / vec2(WINDOW_WIDTH, WINDOW_HEIGHT);
+    float depth = texelFetch(in_depth, coord, 0).x;
 
     vec3 position = unproject(uv, depth, inverse(frame.camera.view_proj));
     PointLight light = point_lights[light_index];
@@ -45,10 +46,8 @@ void main() {
     vec3 light_dir = normalize(pos2light);
     float light_dist = length(pos2light);
 
-    float light_factor = max(0.0, dot(light_dir, normal));
-    vec3 diffuse = int(light_dist <= light.radius) * light.color * light_factor;
-
-    color *= diffuse;
-
-    out_color = color;
+    const float NoL = dot(light_dir, normal);
+    const float att = attenuation(light_dist, light.radius);
+    if(NoL > 0.0 && att > 0.0f)
+        out_color = color * light.color * (NoL * att);
 }
