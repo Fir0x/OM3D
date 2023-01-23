@@ -42,12 +42,14 @@ void main() {
     vec3 position = unproject(uv, depth, inverse(frame.camera.view_proj));
     PointLight light = point_lights[light_index];
 
-    vec3 pos2light = light.position - position;
-    vec3 light_dir = normalize(pos2light);
-    float light_dist = length(pos2light);
+    const vec3 pos2light = light.position - position;
+    const float light_dist = length(pos2light);
+    const vec3 light_dir = pos2light / light_dist;
 
-    const float NoL = dot(light_dir, normal);
-    const float att = attenuation(light_dist, light.radius);
-    if(NoL > 0.0 && att > 0.0f)
-        out_color = color * light.color * (NoL * att);
+    const float NoL = max(0.0, dot(light_dir, normal));
+    const float att = max(0.0, attenuation(light_dist, light.radius));
+
+    const vec3 acc = light.color * (NoL * att);
+
+    out_color = color * acc;
 }

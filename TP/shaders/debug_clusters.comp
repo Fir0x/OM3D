@@ -81,7 +81,7 @@ void main() {
         c4 - c2, // Top
         c4 + c2, // Bottom
         vec4(0.0, 0.0, 1.0, max_group_depth), // Far
-        vec4(0.0, 0.0, -1.0, min_group_depth) // Near
+        vec4(0.0, 0.0, -1.0, -min_group_depth) // Near
     };
 
     for (uint i = gl_LocalInvocationIndex; i < light_limit; i += gl_WorkGroupSize.x * gl_WorkGroupSize.y) {
