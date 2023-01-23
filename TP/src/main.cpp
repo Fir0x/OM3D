@@ -158,7 +158,7 @@ int main(int, char**) {
     Texture color(window_size, ImageFormat::RGBA8_UNORM);
     Framebuffer tonemap_framebuffer(nullptr, std::array{&color});
 
-    auto deferred_color = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_sRGB);
+    auto deferred_color = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
     auto deferred_normal = std::make_shared<Texture>(window_size, ImageFormat::RGBA8_UNORM);
     auto depth = std::make_shared<Texture>(window_size, ImageFormat::Depth32_FLOAT);
 
